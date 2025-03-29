@@ -1,0 +1,38 @@
+;
+; Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
+;
+; SPDX-License-Identifier: BSD-3-Clause
+;
+
+; SET pin 0 should be mapped to your LED GPIO
+
+.program blink
+    pull block ; pull some value from FIFO (no use here, but just to show it)
+    pull block ; put the correct value from FIFO to use as the counter
+    out y, 32 ; get a 32 bit value from the CPU register & assign the above FIFO value
+
+.wrap_target ; this is a starting point where the below .wrap can jump into
+    mov x, y ; move the counter value from y to x (both y & x are pre-defined)
+    set pins, 1   ; Turn LED on
+lp1:
+    jmp x-- lp1   ; loop until the x is -1, then move the next line (one loop cycle at a time)
+    mov x, y      ; after that set the counter value again, since there's no ++ operator
+    set pins, 0   ; Turn LED off
+lp2:
+    jmp x-- lp2   ; just like above loop until x is 0
+.wrap             ; jump into .wrap_target
+
+
+% c-sdk {
+
+//This is a function which can be called from the C++
+// It does the initialization of these pio & state machine (sm) for the given pin
+
+void blink_program_init(PIO pio, uint sm, uint offset, uint pin) {
+   pio_gpio_init(pio, pin);
+   pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, true);
+   pio_sm_config c = blink_program_get_default_config(offset);
+   sm_config_set_set_pins(&c, pin, 1);
+   pio_sm_init(pio, sm, offset, &c);
+}
+%}
