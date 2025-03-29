@@ -1,0 +1,67 @@
+;
+; Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
+;
+; SPDX-License-Identifier: BSD-3-Clause
+;
+
+; SET pin 0 should be mapped to your LED GPIO
+
+.program blink
+    pull block        ; Pull blink count value into OSR
+    out x, 32         ; Load blink count into X
+    pull block        ; Pull delay value into OSR 
+    out y, 32         ; Load delay value into Y
+    
+    ; Initialize LED to OFF state
+    set pins, 0       ; Ensure LED starts in the OFF state
+    
+    ; If blink count is zero, just wait for new values
+    jmp !x wait_for_cmd
+    
+.wrap_target
+blink_loop:
+    jmp !x wait_for_cmd; make sure the counter stops at 0
+    
+    ; One blink cycle includes on and off states
+    set pins, 1       ; Turn LED on
+    
+    ; Delay loop with LED on
+    mov isr, x        ; Save blink counter to ISR
+    mov x, y          ; Load delay value from Y to X
+on_delay:
+    jmp x-- on_delay  ; Delay for (x) cycles with LED on
+    
+    set pins, 0       ; Turn LED off
+    
+    ; Delay loop with LED off
+    mov x, y          ; Load delay value from Y to X
+off_delay:
+    jmp x-- off_delay ; Delay for (x) cycles with LED off
+    
+    ; Decrement blink counter and loop if not done
+    mov x, isr        ; Restore blink count from ISR
+    jmp x-- blink_loop ; Decrement blink count and continue if not zero
+    
+    ; When done blinking, wait for new command
+wait_for_cmd:
+    pull block        ; Block until new values are provided
+    out x, 32         ; Load new blink count into X
+    pull block        ; Pull delay value into OSR
+    out y, 32         ; Load new delay value into Y
+    jmp !x wait_for_cmd ; If count is still zero, keep waiting
+    jmp blink_loop    ; Otherwise start blinking
+
+.wrap                 ; Wrap around if we ever get here
+
+
+% c-sdk {
+// this is a raw helper function for use by the user which sets up the GPIO output, and configures the SM to output on a particular pin
+
+void blink_program_init(PIO pio, uint sm, uint offset, uint pin) {
+   pio_gpio_init(pio, pin);
+   pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, true);
+   pio_sm_config c = blink_program_get_default_config(offset);
+   sm_config_set_set_pins(&c, pin, 1);
+   pio_sm_init(pio, sm, offset, &c);
+}
+%}
