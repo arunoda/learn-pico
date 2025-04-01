@@ -1,33 +1,59 @@
-
 .program i2s
-reset_x:
-    set x, 2            ; Set x to 3
-    pull block          ; Get next value from DMA
-    out y, 32           ; Store it in y register
-blink:
-    jmp !x reset_x      ; if x=0, start new again
-    mov osr, x          ; mov updates x to osr for storing
-    mov x, y            ; Copy to x for counting
-    set pins, 1         ; Turn LED on
-lp1:
-    jmp x-- lp1         ; Delay for (x + 1) cycles
-    mov x, y            ; Reload x for off time
-    set pins, 0         ; Turn LED off
-lp2:
-    jmp x-- lp2         ; Delay for (x + 1) cycles
-    mov x, osr          ; get the time counter to x
-    jmp x-- blink       ; decrement it and blink again
+; I2S Left-Justified format for PT8211
+; Pins: 
+; - Base pin: SD (data out)
+; - Base+1: BCLK (bit clock)
+; - Base+2: WS (word select)
 
+.wrap_target
+    ;pull block          ; Get 32-bit data (16-bit left, 16-bit right) from TX FIFO
+    set x, 15          ; Set counter for 16 bits per channel
 
+left_channel:
+    ;out pins, 1         ; out a bit
+    set pins, 2     ; BCLK to high, later [1]
+    nop                 ; 
+    set pins, 0         ; Set all the pins to low
+    jmp x-- left_channel ; Repeat for 16 bits
+
+setup:
+    set x, 15
+
+right_channel:
+    set pins, 6     ; keep both ws blk high
+    nop                 
+    set pins, 4         ; keep the WS pin high
+    jmp x-- right_channel ; Repeat for 16 bits
+
+.wrap
 
 % c-sdk {
-// this is a raw helper function for use by the user which sets up the GPIO output, and configures the SM to output on a particular pin
+#include "hardware/clocks.h"
 
-void i2s_program_init(PIO pio, uint sm, uint offset, uint pin) {
-   pio_gpio_init(pio, pin);
-   pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, true);
-   pio_sm_config c = i2s_program_get_default_config(offset);
-   sm_config_set_set_pins(&c, pin, 1);
-   pio_sm_init(pio, sm, offset, &c);
+// Configure PIO state machine
+static inline void i2s_program_init(PIO pio, uint sm, uint offset, uint data_pin, float freq) {
+    pio_sm_config c = i2s_program_get_default_config(offset);
+
+    // Set pin configuration
+    sm_config_set_out_pins(&c, data_pin, 1);         // SD pin
+    sm_config_set_set_pins(&c, data_pin + 1, 2);    // BCLK and WS pins
+    sm_config_set_sideset(&c, 0, false, false);
+
+    // Shift out 32 bits (left + right) per sample, MSB first
+    sm_config_set_out_shift(&c, true, false, 32);
+
+    // Clock divider: system clock / (sample rate * 32 clocks per sample)
+    float clk_div = (float)clock_get_hz(clk_sys) / (freq * 32.0f);
+    sm_config_set_clkdiv(&c, clk_div);
+
+    // Initialize pins
+    pio_gpio_init(pio, data_pin);
+    pio_gpio_init(pio, data_pin + 1);
+    pio_gpio_init(pio, data_pin + 2);
+    pio_sm_set_consecutive_pindirs(pio, sm, data_pin, 3, true);
+
+    // Load and start the state machine
+    pio_sm_init(pio, sm, offset, &c);
+    pio_sm_set_enabled(pio, sm, true);
 }
 %}

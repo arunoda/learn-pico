@@ -42,7 +42,6 @@ pico_set_program_version(09_i2s "0.1")
 
 # Generate PIO header
 pico_generate_pio_header(09_i2s ${CMAKE_CURRENT_LIST_DIR}/blink.pio)
-pico_generate_pio_header(09_i2s ${CMAKE_CURRENT_LIST_DIR}/i2s.pio)
 
 # Modify the below lines to enable/disable output over UART/USB
 pico_enable_stdio_uart(09_i2s 0)
@@ -64,6 +63,8 @@ target_link_libraries(09_i2s
         hardware_irq
         pico_stdlib
         pico_malloc
+        pico_audio
+        pico_audio_i2s
         m
         )
 
