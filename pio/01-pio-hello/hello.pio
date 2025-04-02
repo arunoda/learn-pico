@@ -1,0 +1,33 @@
+.program hello
+
+loop:
+    ; get a value (32bit) from the FIFO & put it to the osr register
+    ; also wait until there is a value in the FIFO
+    pull
+    ; shift a bit in osr & send that it to the pins
+    ; for now it gets the least significant bit
+    out pins, 1
+    ; loop back to the start
+    jmp loop
+
+
+% c-sdk {
+
+static inline void hello_program_init(PIO pio, uint sm, uint offset, uint pin) {
+    pio_sm_config c = hello_program_get_default_config(offset);
+
+    // connect the pin to the state machine
+    sm_config_set_out_pins(&c, pin, 1);
+
+    // init the gpio of the pin
+    pio_gpio_init(pio, pin);
+
+    // set the direction
+    pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, true);
+
+    // init pio & sm
+    pio_sm_init(pio, sm, offset, &c);
+    pio_sm_set_enabled(pio, sm, true);
+}
+
+%}
