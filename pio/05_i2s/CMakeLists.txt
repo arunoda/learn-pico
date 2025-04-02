@@ -50,6 +50,7 @@ pico_enable_stdio_usb(05_i2s 1)
 target_link_libraries(05_i2s
         pico_stdlib
         hardware_pio
+        hardware_dma
         )
 
 # Add the standard include files to the build
