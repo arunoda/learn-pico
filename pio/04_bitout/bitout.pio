@@ -1,0 +1,14 @@
+.program bitout
+
+.side_set 1
+.define public CYCLES 2
+
+
+.wrap_target
+    set x 6         side 0b1
+    set pins, 0     side 0b1 [3]
+loop:
+    out pins, 1     side 0b0
+    jmp x-- loop    side 0b1
+    out pins, 1     side 0b0
+.wrap
