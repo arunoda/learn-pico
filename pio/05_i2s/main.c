@@ -1,14 +1,22 @@
 #include <stdio.h>
+#include <math.h>
 #include "pico/stdlib.h"
 #include "hardware/pio.h"
 #include "hardware/clocks.h"
 #include "i2s.pio.h"
 
-#define I2S_BCK_PIN 0
-#define I2S_WS_PIN 1
-#define I2S_DATA_PIN 2
+#define PI 3.14159265358979323846
 
-#define SAMPLE_RATE 24000
+// #define I2S_BCK_PIN 0
+// #define I2S_WS_PIN 1
+// #define I2S_DATA_PIN 2
+
+#define I2S_BCK_PIN 5
+#define I2S_WS_PIN 6
+#define I2S_DATA_PIN 7
+
+
+#define SAMPLE_RATE 48000
 
 uint32_t get_desired_clock_khz(uint32_t sample_rate) {
     if (sample_rate %  8000 == 0) {
@@ -59,7 +67,24 @@ int main()
     pio_sm_init(pio, sm, offset, &c);
     pio_sm_set_enabled(pio, sm, true);
 
+    // Generate sine wave samples for both channels
+    const int SAMPLES = SAMPLE_RATE / 440; // 440Hz tone
+    int16_t sine_wave[SAMPLES * 2]; // *2 for stereo
+    
+    for (int i = 0; i < SAMPLES; i++) {
+        // Generate sine wave value between -32768 and 32767
+        int16_t sample = (int16_t)(32767.0f * sin((2.0f * (float)PI * i) / SAMPLES));
+        // Left channel
+        sine_wave[i * 2] = sample;
+        // Right channel (same data)
+        sine_wave[i * 2 + 1] = sample;
+    }
+
+    int32_t *buffer = (int32_t *)sine_wave;
+
     while (true) {
-        pio_sm_put_blocking(pio, sm, 0x00030001);
+        for (int i = 0; i < SAMPLES; i++) {
+            pio_sm_put_blocking(pio, sm, buffer[i]);
+        }
     }
 }
