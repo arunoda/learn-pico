@@ -23,7 +23,7 @@ int main()
     while (true) {
         // this wait until the FIFO has some space
         // in this case, it doesn't matter as FIFO can have 4 items by defult
-        pio_sm_put_blocking(pio, sm, 3);
+        pio_sm_put_blocking(pio, sm, 1);
         sleep_ms(500);
         pio_sm_put_blocking(pio, sm, 0);
         sleep_ms(500);
