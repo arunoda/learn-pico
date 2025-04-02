@@ -1,0 +1,37 @@
+.program blink
+
+; .define public CYCLES 4
+; loop:
+;     set pins, 1 [1] ; cause an cycle & we wait for another do compensate the jmp
+;     set pins, 0 ; cause an cycle
+;     jmp loop ; this causes an cycle
+
+
+
+; This is a much faster version
+.define public CYCLES 2
+.wrap_target
+    set pins, 1
+    set pins, 0
+.wrap ; no cycle is used
+
+; ;for low frequecies we need to wait like this or some other way
+; .define public CYCLES 512
+; .wrap_target
+;     set pins, 1 [31]
+;     nop [31]
+;     nop [31]
+;     nop [31]
+;     nop [31]
+;     nop [31]
+;     nop [31]
+;     nop [31]
+;     set pins, 0 [31]
+;     nop [31]
+;     nop [31]
+;     nop [31]
+;     nop [31]
+;     nop [31]
+;     nop [31]
+;     nop [31]
+; .wrap ; no cycle is used
