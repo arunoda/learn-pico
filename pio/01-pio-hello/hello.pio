@@ -9,31 +9,3 @@ loop:
     out pins, 1
     ; loop back to the start
     jmp loop
-
-
-% c-sdk {
-
-static inline void hello_program_init(PIO pio, uint sm, uint offset, uint pin) {
-    pio_sm_config c = hello_program_get_default_config(offset);
-
-    // connect the pin to the state machine
-    sm_config_set_out_pins(&c, pin, 1);
-
-    // change the shift direction to the right (2nd argument)
-    // then it will shift bits in osr from right to left
-    // third argument is the autopull & we don't need it right now
-    // 4th(32) is the number of bits it should shift to autopull
-    sm_config_set_out_shift(&c, true, false, 32);
-
-    // init the gpio of the pin
-    pio_gpio_init(pio, pin);
-
-    // set the direction
-    pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, true);
-
-    // init pio & sm
-    pio_sm_init(pio, sm, offset, &c);
-    pio_sm_set_enabled(pio, sm, true);
-}
-
-%}
