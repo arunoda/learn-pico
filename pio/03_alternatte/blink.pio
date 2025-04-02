@@ -1,0 +1,7 @@
+.program blink
+.define public CYCLES 2
+
+.wrap_target
+    set pins, 0b10
+    set pins, 0b01
+.wrap
