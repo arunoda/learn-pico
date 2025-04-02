@@ -6,13 +6,12 @@
 .wrap_target
     set x 14        side 0b01
 loop_l:
-    out pins, 1     side 0b00
-    jmp x-- loop_l  side 0b01
-    out pins, 1     side 0b10 ; changing the WS position on the last bit
+    out pins, 1     side 0b10
+    jmp x--, loop_l side 0b11
+    out pins, 1     side 0b10
     set x 14        side 0b11
 loop_r:
-    out pins, 1     side 0b10
-    jmp x-- loop_r  side 0b11
-    out pins, 1     side 0b00 ; changing the WS position on the last bit
+    out pins, 1     side 0b00
+    jmp x--, loop_r side 0b01
+    out pins, 1     side 0b00
 .wrap
-

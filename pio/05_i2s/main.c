@@ -8,9 +8,6 @@
 
 #define PI 3.14159265358979323846
 
-#define LED_PIN 13
-#define BUTTON_PIN 12
-
 // #define I2S_BCK_PIN 0
 // #define I2S_WS_PIN 1
 // #define I2S_DATA_PIN 2
@@ -50,7 +47,9 @@ int main()
 
     //pin config
     sm_config_set_out_pins(&c, I2S_DATA_PIN, 1);
-    sm_config_set_out_shift(&c, true, true, 32);
+    // add support LSB with autopull after 32 bits (simply because our DAC is PT8211)
+    // It's a 16bit stereo DAC with LSB format
+    sm_config_set_out_shift(&c, false, true, 32);
     sm_config_set_sideset_pins(&c, I2S_BCK_PIN);
 
     // Increase the FIFO size to 8 words
@@ -72,13 +71,13 @@ int main()
     pio_sm_set_enabled(pio, sm, true);
 
     // Generate sine wave samples for stereo output
-    const int SAMPLES = SAMPLE_RATE / 440; // One period of 440Hz tone (A4 note)
+    const int SAMPLES = SAMPLE_RATE / 110; // One period of 440Hz tone (A4 note)
     int16_t sine_wave[SAMPLES * 2]; // *2 for stereo (left and right channels)
     
     // Generate one complete sine wave cycle
     for (int i = 0; i < SAMPLES; i++) {
         // Calculate the phase angle for this sample (0 to 2π)
-        float phase = (2.0f * PI * i) / SAMPLES;
+        float phase = (2.0f * PI * i) / (float)SAMPLES;
         
         // Generate sine wave sample scaled to full 16-bit range (-32768 to 32767)
         int16_t sample = (int16_t)(32767.0f * sin(phase));
@@ -90,43 +89,9 @@ int main()
 
     int32_t *buffer = (int32_t *)sine_wave;
 
-    // DMA setup
-    uint dma_chan = dma_claim_unused_channel(true);
-    dma_channel_config dma_config = dma_channel_get_default_config(dma_chan);
-    channel_config_set_transfer_data_size(&dma_config, DMA_SIZE_32);
-    channel_config_set_read_increment(&dma_config, true);
-    channel_config_set_write_increment(&dma_config, false);
-    channel_config_set_dreq(&dma_config, pio_get_dreq(pio, sm, true));
-    channel_config_set_chain_to(&dma_config, dma_chan);
-    channel_config_set_irq_quiet(&dma_config, false); // Need IRQs
-    dma_channel_set_irq0_enabled(dma_chan, true);
-    
-    dma_channel_configure(
-        dma_chan,          // Channel to be configured
-        &dma_config,                // The configuration we just created
-        &pio->txf[sm],     // Write address (PIO TX FIFO)
-        sine_wave,              // Read address set below
-        SAMPLES,                 // Transfer count set below
-        true              // No auto start
-    );
-
-    // button setup
-    gpio_init(BUTTON_PIN);
-    gpio_set_dir(BUTTON_PIN, GPIO_IN);
-    gpio_pull_up(BUTTON_PIN);
-
-    gpio_init(LED_PIN);
-    gpio_set_dir(LED_PIN, GPIO_OUT);
-
     while (true) {
-        if (!gpio_get(BUTTON_PIN)) {
-            gpio_put(LED_PIN, true);
-            // It's very important to set the read address before the transfer count
-            dma_channel_set_read_addr(dma_chan, sine_wave, false);
-            dma_channel_set_trans_count(dma_chan, SAMPLES, true); // Start the transfer
-            sleep_ms(10);
-        } else {
-            gpio_put(LED_PIN, false);
+        for (int i = 0; i < SAMPLES; i++) {
+            pio_sm_put_blocking(pio, sm, buffer[i]);
         }
     }
 }
