@@ -84,7 +84,7 @@ int main()
         
         // Store the same sample in both left and right channels
         sine_wave[i * 2] = sample;     // Left channel
-        sine_wave[i * 2 + 1] = sample; // Right channel
+        sine_wave[i * 2 + 1] = 0;      // Right channel
     }
 
     int32_t *buffer = (int32_t *)sine_wave;
