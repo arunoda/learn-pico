@@ -17,9 +17,8 @@
 #define I2S_DATA_PIN 7
 
 #define SAMPLE_RATE 48000
-#define SAMPLES 436
-// const int SAMPLES = SAMPLE_RATE / 110; // One period of 440Hz tone (A4 note)
-volatile int16_t sine_wave[SAMPLES * 2];
+const int SAMPLES = SAMPLE_RATE / 110; // One period of 440Hz tone (A4 note)
+volatile int16_t* buffer;
 
 uint32_t get_desired_clock_khz(uint32_t sample_rate) {
     if (sample_rate %  8000 == 0) {
@@ -74,7 +73,7 @@ void init_pio() {
 
 void dma_handler() {
     dma_hw->ints0 = 1u << dma_chan;
-    dma_channel_set_read_addr(dma_chan, &sine_wave, false);
+    dma_channel_set_read_addr(dma_chan, buffer, false);
     dma_channel_set_trans_count(dma_chan, SAMPLES, true);
 }
 
@@ -83,6 +82,8 @@ int main()
     stdio_init_all();
     init_pio();
 
+    volatile int16_t sine_wave[SAMPLES * 2];
+    buffer = (int16_t*) sine_wave;
     
     // Generate one complete sine wave cycle
     for (int i = 0; i < SAMPLES; i++) {
@@ -105,18 +106,14 @@ int main()
     channel_config_set_read_increment(&c, true);
     channel_config_set_write_increment(&c, false);
     channel_config_set_dreq(&c, pio_get_dreq(pio, sm, true));
-    dma_channel_configure(dma_chan, &c, &pio->txf[sm], &sine_wave, SAMPLES, true);
+    dma_channel_configure(dma_chan, &c, &pio->txf[sm], buffer, SAMPLES, true);
     
-
+    // enabled the dma_handler
     dma_channel_set_irq0_enabled(dma_chan, true);
     irq_set_exclusive_handler(DMA_IRQ_0, dma_handler);
     irq_set_enabled(DMA_IRQ_0, true);
 
-    // dma_handler();
-
     while (true) {
-        // for (int i = 0; i < SAMPLES; i++) {
-        //     pio_sm_put_blocking(pio, sm, buffer[i]);
-        // }
+      
     }
 }
