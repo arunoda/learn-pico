@@ -8,13 +8,13 @@
 
 #define PI 3.14159265358979323846
 
-// #define I2S_BCK_PIN 0
-// #define I2S_WS_PIN 1
-// #define I2S_DATA_PIN 2
+#define I2S_BCK_PIN 0
+#define I2S_WS_PIN 1
+#define I2S_DATA_PIN 2
 
-#define I2S_BCK_PIN 5
-#define I2S_WS_PIN 6
-#define I2S_DATA_PIN 7
+// #define I2S_BCK_PIN 5
+// #define I2S_WS_PIN 6
+// #define I2S_DATA_PIN 7
 
 
 #define SAMPLE_RATE 48000
@@ -84,7 +84,7 @@ int main()
         
         // Store the same sample in both left and right channels
         sine_wave[i * 2] = sample;     // Left channel
-        sine_wave[i * 2 + 1] = 0;      // Right channel
+        sine_wave[i * 2 + 1] = sample;      // Right channel
     }
 
     int32_t *buffer = (int32_t *)sine_wave;

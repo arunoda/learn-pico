@@ -8,11 +8,12 @@
 
 #define PI 3.14159265358979323846
 
-#define I2S_BCK_PIN 5
-#define I2S_WS_PIN 6
-#define I2S_DATA_PIN 7
+#define I2S_BCK_PIN 0
+#define I2S_WS_PIN 1
+#define I2S_DATA_PIN 2
 
 #define A0 0
+#define A1 1
 #define SAMPLE_RATE 48000
 
 // PIO initialization
@@ -72,9 +73,8 @@ int main()
 
     adc_init();
     adc_gpio_init(26 + A0);
-    adc_select_input(A0);
-
-    // Calculate timing for the given sample rate
+    adc_gpio_init(26 + A1);
+    
     uint32_t delay_us = 1000000 / SAMPLE_RATE; // Microseconds between samples
     
     absolute_time_t next_sample_time = get_absolute_time();
@@ -83,10 +83,22 @@ int main()
         // Calculate next sample time
         next_sample_time = delayed_by_us(next_sample_time, delay_us);
 
-        // Read ADC at precise timing
-        uint16_t val = adc_read();
-        int32_t val_for_dac = (val - 2048) * 16;
-
+        // Read ADC A0
+        adc_select_input(A0);
+        uint16_t val0 = adc_read();
+        
+        // Read ADC A1
+        adc_select_input(A1);
+        uint16_t val1 = adc_read();
+        
+        // Add the values
+        uint16_t val_combined = val0 + val1;
+        // Scale appropriately to avoid overflow
+        val_combined = val_combined / 2;
+        
+        float val_normalized = (val_combined - 2048) / 2048.0;
+        
+        int32_t val_for_dac = val_normalized * 32767;
         int32_t both_channels = val_for_dac | (val_for_dac << 16);
         
         pio_sm_put_blocking(pio, sm, both_channels);
