@@ -84,7 +84,7 @@ int main()
 
     // Calculate clock divider based on sample rate
     // ADC runs at 48MHz, and each conversion takes 96 cycles
-    float clock_div = (48000000.0f / (SAMPLE_RATE * 96.0f)) - 1.0f;
+    float clock_div = (clock_get_hz(clk_adc) / (SAMPLE_RATE * 96.0f)) - 1.0f;
     adc_set_clkdiv(clock_div);
     
     sleep_ms(3000);
@@ -116,6 +116,7 @@ int main()
             uint16_t val = capture_buf[i];
             uint16_t val_polarized = val - 2048;
         
+            // int32_t val_for_dac = val_polarized * 16;
             int32_t val_for_dac = val_polarized * 16;
             int32_t both_channels = val_for_dac | (val_for_dac << 16);
             pio_sm_put_blocking(pio, sm, both_channels);
