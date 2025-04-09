@@ -18,6 +18,7 @@ int main()
     stdio_init_all();
 
     multicore_launch_core1(main2);
+    // push is blocking because the FIFO size is 4 words of 32bit values.
     multicore_fifo_push_blocking(1);
 
     while (true) {
