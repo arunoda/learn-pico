@@ -53,8 +53,8 @@ int main() {
         }
 
         gpio_put(LED_PIN, true);
-        sleep_ms(100);
+        sleep_ms(250);
         gpio_put(LED_PIN, false);
-        sleep_ms(100);
+        sleep_ms(250);
     }
 }
