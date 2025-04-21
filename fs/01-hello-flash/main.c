@@ -11,12 +11,12 @@
 #define FLASH_TARGET_OFFSET (1024 * 1024) * 15 // 15MB offset
 
 // Define a simple data structure to store in flash
-// The size of the struct must be multiples of 256 bytes
+// The size of the struct must be multiples of pages size (256 bytes)
 // otherwise the flash_range_program will crash
 typedef struct {
     uint32_t magic;       // Magic number to identify valid data
     uint32_t counter;     // A simple counter
-    char message[256 - sizeof(uint32_t) * 2];     // A message string
+    char message[FLASH_PAGE_SIZE - sizeof(uint32_t) * 2];     // A message string
 } flash_data_t;
 
 // Magic number for data validation
@@ -34,16 +34,11 @@ int main() {
     
     printf("Flash Memory Example\n");
     
-    // Get flash parameters
-    uint32_t flash_sector_size = FLASH_SECTOR_SIZE;
-    uint32_t flash_page_size = FLASH_PAGE_SIZE;
-    uint32_t flash_size = PICO_FLASH_SIZE_BYTES;
-    
-    printf("Flash parameters:\n");
-    printf("  Sector size: %u bytes\n", flash_sector_size);
-    printf("  Page size: %u bytes\n", flash_page_size);
-    printf("  Total size: %u bytes (%u MB)\n", flash_size, flash_size / (1024 * 1024));
-    printf("  Target offset: 0x%x\n", FLASH_TARGET_OFFSET);
+    printf("Flash: %uKB sectors, %uB pages, %uMB total, offset: 0x%x\n",
+           FLASH_SECTOR_SIZE / 1024,
+           FLASH_PAGE_SIZE,
+           PICO_FLASH_SIZE_BYTES / (1024 * 1024),
+           FLASH_TARGET_OFFSET);
     
     // Read existing data from flash
     const flash_data_t* existing_data = (const flash_data_t*)(XIP_BASE + FLASH_TARGET_OFFSET);
@@ -70,8 +65,7 @@ int main() {
     uint32_t ints = save_and_disable_interrupts();
     
     // Erase the sector
-    flash_range_erase(FLASH_TARGET_OFFSET, flash_sector_size);
-    
+    flash_range_erase(FLASH_TARGET_OFFSET, FLASH_SECTOR_SIZE);
     // Program the data
     flash_range_program(FLASH_TARGET_OFFSET, (const uint8_t*)&new_data, sizeof(new_data));
     
