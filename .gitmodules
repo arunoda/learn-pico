@@ -1,0 +1,3 @@
+[submodule "fs/02-lfs/lib/littlefs"]
+	path = fs/02-lfs/lib/littlefs
+	url = https://github.com/littlefs-project/littlefs.git
