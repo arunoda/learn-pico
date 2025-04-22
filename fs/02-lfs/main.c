@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "pico/stdlib.h"
 #include "hardware/uart.h"
-#include "pico_littlefs.h"
+#include "pico_lfs.h"
 
 #define LED_PIN 13
 
@@ -69,6 +69,6 @@ int main()
         gpio_put(LED_PIN, false);
         sleep_ms(1000);
 
-        printf("Hello, world from printf!\r\n");
+        printf("Hello, world!\r\n");
     }
 }
