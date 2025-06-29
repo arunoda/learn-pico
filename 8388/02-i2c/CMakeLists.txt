@@ -23,42 +23,40 @@ if (EXISTS ${picoVscode})
     include(${picoVscode})
 endif()
 # ====================================================================================
-# 16bit board script will set the flash size to 16MB in the runtime
-set(PICO_BOARD 16bit)
-set(PICO_BOARD_HEADER_DIRS ${CMAKE_CURRENT_LIST_DIR}/boards)
-set(PICO_FLASH_SIZE_BYTES 16777216)
+set(PICO_BOARD pico2 CACHE STRING "Board type")
 
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import.cmake)
 
-project(01-psram C CXX ASM)
+project(02-i2c C CXX ASM)
 
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(01-psram main.cpp )
+add_executable(02-i2c main.cpp )
 
-pico_set_program_name(01-psram "01-psram")
-pico_set_program_version(01-psram "0.1")
+pico_set_program_name(02-i2c "02-i2c")
+pico_set_program_version(02-i2c "0.1")
 
 # Modify the below lines to enable/disable output over UART/USB
-pico_enable_stdio_uart(01-psram 0)
-pico_enable_stdio_usb(01-psram 1)
+pico_enable_stdio_uart(02-i2c 0)
+pico_enable_stdio_usb(02-i2c 1)
 
 # Add the standard library to the build
-target_link_libraries(01-psram
-            pico_stdlib
-            hardware_pio
-            pico_multicore
-            hardware_adc
-        )
+target_link_libraries(02-i2c
+        pico_stdlib)
 
 # Add the standard include files to the build
-target_include_directories(01-psram PRIVATE
+target_include_directories(02-i2c PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
 )
 
-pico_add_extra_outputs(01-psram)
+# Add any user requested libraries
+target_link_libraries(02-i2c 
+        hardware_i2c
+        )
+
+pico_add_extra_outputs(02-i2c)
 
