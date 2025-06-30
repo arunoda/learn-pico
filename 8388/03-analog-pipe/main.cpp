@@ -47,17 +47,21 @@ int main() {
 
     // ADC settings (we will do more later, no needed for this example)
     es8388_write(9, 0b00000000); // R9: mic gain to 0db: 0000 0000
+    es8388_write(14, 0b00110000);
+    es8388_write(15, 0b00100000);
     es8388_write(16, 0b00000000); // R16: ADCL volume, we need to set it to 0000 0000 of 0db
     es8388_write(17, 0b00000000); // R17: DACR volume, we need to set it to 0000 0000 of 0db
     
     // DAC and output settings
     es8388_write(26, 0b00000000); // R26: DACL volume, we need to set it to 0000 0000 of 0db
     es8388_write(27, 0b00000000); // R27: DACR volume, we need to set it to 0000 0000 of 0db
-    es8388_write(28, 0b00000000); // R28: some phase inversion and frew defaults. set to defaults: 0000 0000
+    es8388_write(28, 0b00000000); // R28: some phase inversion and few defaults. set to defaults: 0000 0000
+    es8388_write(29, 0b00000000); // 
     es8388_write(38, 0b00000000); // R38: LIN select: 0000 0000 (LIN1 -> LEFT, RIN1 -> RIGHT)
-    es8388_write(39, 0b01000000); // R39: need to enable LIN to Mixer and 0db volume 0101 0000
+    es8388_write(39, 0b01010000); // R39: need to enable LIN to Mixer and 0db volume 0101 0000
     es8388_write(42, 0b01010000); // R42: need to enable RIN to Mixer and 0db volume 0101 0000
-    es8388_write(46, 0b10000100); // R46: LOUT1 volume: need to change to 0111 1000 for 0db
+    es8388_write(45, 0b00000000);
+    es8388_write(46, 0b00011110); // R46: LOUT1 volume: need to change to 00011110 for 0db
     es8388_write(47, 0b00000000); // R47: ROUT1 volume: moved to 0000 0000 for -45db
     es8388_write(48, 0b00000000); // R48: LOUT2 volume: moved to 0000 0000 for -45db
     es8388_write(49, 0b00000000); // R49: ROUT2 volume: moved to 0000 0000 for -45db
