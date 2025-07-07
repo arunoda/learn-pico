@@ -35,7 +35,7 @@ pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(04_i2s main.c )
+add_executable(04_i2s main.cpp )
 
 pico_generate_pio_header(04_i2s ${CMAKE_CURRENT_LIST_DIR}/i2s.pio)
 
@@ -52,6 +52,7 @@ target_link_libraries(04_i2s
         hardware_pio
         hardware_dma
         hardware_pwm
+        hardware_i2c
         )
 
 # Add the standard include files to the build
