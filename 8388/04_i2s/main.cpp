@@ -14,6 +14,7 @@
 #define I2S_BCK_PIN 4
 #define I2S_WS_PIN 5
 #define I2S_DATA_PIN 6
+#define I2S_DATA_IN_PIN 7
 
 // ——— I2C CONFIG —————————————————————————————————
 #define PIN_I2C_SDA 0
@@ -56,17 +57,22 @@ uint32_t get_desired_clock_khz(uint32_t sample_rate) {
 }
 
 void init_pio_i2s() {
-    bool success = pio_claim_free_sm_and_add_program_for_gpio_range(&i2s_program, &pio, &sm, &offset, I2S_BCK_PIN, 3, true);
+    bool success = pio_claim_free_sm_and_add_program_for_gpio_range(&i2s_program, &pio, &sm, &offset, I2S_BCK_PIN, 4, true);
     hard_assert(success);
 
     pio_sm_config c = i2s_program_get_default_config(offset);
 
-    //pin config
+    //pin out config
     sm_config_set_out_pins(&c, I2S_DATA_PIN, 1);
     // add support LSBJ with autopull after 32 bits (simply because our DAC is PT8211)
     // It's a 16bit stereo DAC with LSBJ format
     sm_config_set_out_shift(&c, false, true, 32);
     sm_config_set_sideset_pins(&c, I2S_BCK_PIN);
+
+    // // //pin in config
+    sm_config_set_in_pins(&c, I2S_DATA_IN_PIN);
+    sm_config_set_in_pin_count(&c, 1);
+    sm_config_set_in_shift(&c, false, true, 32);
 
     // // Increase the FIFO size to 8 words
     // sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
@@ -75,11 +81,19 @@ void init_pio_i2s() {
     pio_gpio_init(pio, I2S_BCK_PIN);
     pio_gpio_init(pio, I2S_WS_PIN);
     pio_gpio_init(pio, I2S_DATA_PIN);
+    pio_gpio_init(pio, I2S_DATA_IN_PIN);
+    
+    // Set output pins as outputs (BCK, WS, DATA_OUT)
     pio_sm_set_consecutive_pindirs(pio, sm, I2S_BCK_PIN, 3, true);
+    
+    // Set input pin as input (DATA_IN)
+    pio_sm_set_consecutive_pindirs(pio, sm, I2S_DATA_IN_PIN, 1, false);
 
     //clock setup
     set_sys_clock_khz(get_desired_clock_khz(SAMPLE_RATE), true);
-    float div = clock_get_hz(clk_sys) / (SAMPLE_RATE * 32 * i2s_BCK_CYCLES);
+    // here we run this as twice the speed to support reading data from i2s as well
+    // in the pio code, we use nop to match the clocks
+    float div = clock_get_hz(clk_sys) / (SAMPLE_RATE * 32 * i2s_BCK_CYCLES * 2);
     sm_config_set_clkdiv(&c, div);
 
     //start the sm
@@ -201,10 +215,11 @@ int main()
     }
 
     int32_t *buffer = (int32_t *)sine_wave;
-
+    int32_t read_sample = 0;
     while (true) {
         for (int i = 0; i < SAMPLES; i++) {
             pio_sm_put_blocking(pio, sm, buffer[i]);
+            read_sample = pio_sm_get_blocking(pio, sm); // Wait for the sample to be sent
         }
     }
 }
