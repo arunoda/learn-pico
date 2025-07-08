@@ -44,6 +44,13 @@ static bool es8388_read(uint8_t reg, uint8_t &out) {
     return i2c_read_blocking(i2c0, ES8388_ADDR, &out, 1, /*no_stop=*/false) >= 0;
 }
 
+// This is a weird function which won't run ever.
+// But this will keep the loop intact otherwise the
+// i2s pio handler runs inproperly. (maybe the loop run very fast.)
+void loop_stabler() {
+    printf("This holds the loop.");
+}
+
 uint32_t get_desired_clock_khz(uint32_t sample_rate) {
     if (sample_rate %  8000 == 0) {
         return 144000;
@@ -140,13 +147,20 @@ void setup_8388() {
     gpio_pull_up(PIN_I2C_SDA);
     gpio_pull_up(PIN_I2C_SCL);
     sleep_ms(10);                      // give codec time to power up
+    
+    // DAC Mute
+    es8388_write(26, 0b11000000); // R26: DACL volume, we need to set it to 0000 0000 of 0db
+    es8388_write(27, 0b11000000); // R27: DACR volume, we need to set it to 0000 0000 of 0db
+
+    // Disable DAC
+    es8388_write(4, 0b11000000); // R4: enable DACs: 0011 1100
 
     // Power up ES8388 codec
     es8388_write(0, 0b00010110); // R0: set to defaults: 0000 0110
     es8388_write(1, 0b01010000); // R1: ebable analog power: 0101 0000
     es8388_write(2, 0b00000000); // R2: enable chip power: 0000 0000
     es8388_write(3, 0b00001000); // R3: enable ADCs: 0000 1100
-    es8388_write(4, 0b00111100); // R4: enable DACs: 0011 1100
+    
     es8388_write(5, 0b00000000); // R5: no low power mode: 0000 0000
     es8388_write(6, 0b00000000); // R6: no low power mode: 0000
     es8388_write(7, 0b01111100); // R7: anaog voltage mgt (default): 0111 1100
@@ -170,8 +184,6 @@ void setup_8388() {
     // DAC and output settings
     es8388_write(23, 0b00011010); // R23: 16bit with LSB
     es8388_write(24, 0b00000010); // R24: May not need since we use slave mode: but set to 256 MCLK/Sample Rate
-    es8388_write(26, 0b00000000); // R26: DACL volume, we need to set it to 0000 0000 of 0db
-    es8388_write(27, 0b00000000); // R27: DACR volume, we need to set it to 0000 0000 of 0db
     es8388_write(28, 0b00000000); // R28: some phase inversion and few defaults. set to defaults: 0000 0000
     es8388_write(29, 0b00000000); // 
     es8388_write(38, 0b00000000); // R38: LIN select: 0000 0000 (LIN1 -> LEFT, RIN1 -> RIGHT)
@@ -183,13 +195,27 @@ void setup_8388() {
     es8388_write(47, 0b00000000); // R47: ROUT1 volume: moved to 0000 0000 for -45db
     es8388_write(48, 0b00000000); // R48: LOUT2 volume: moved to 0000 0000 for -45db
     es8388_write(49, 0b00000000); // R49: ROUT2 volume: moved to 0000 0000 for -45db
+
+
+    // enable DACs
+    es8388_write(4, 0b00111100); // R4: enable DACs: 0011 1100
+
+    sleep_ms(100);
+
+    // DAC UnMute
+    es8388_write(26, 0b00000000); // R26: DACL volume, we need to set it to 0000 0000 of 0db
+    es8388_write(27, 0b00000000); // R27: DACR volume, we need to set it to 0000 0000 of 0db
+
 }
 
 
 int main()
 {
     stdio_init_all();
+    
     setup_8388();
+    init_pio_i2s();       // Initialize I2S slave PIO
+    init_pwm_mclk();      // Use PWM for MCLK to codec
 
     // Generate sine wave samples for stereo output
     const int SAMPLES = SAMPLE_RATE / 110; // One period of 440Hz tone (A4 note)
@@ -210,14 +236,29 @@ int main()
 
     int32_t *buffer = (int32_t *)sine_wave;
     int32_t read_sample = 0;
-
-    init_pio_i2s();       // Initialize I2S slave PIO
-    init_pwm_mclk();      // Use PWM for MCLK to codec
+    
+    // Simple loop counter for debugging
+    uint32_t loop_count = 0;
 
     while (true) {
-        // setup_8388();
+        // IMPORTANT
+        // This feels like this is useless.
+        // But this will keep the loop runtime running too-fast
+        // Otheriwse the pio put command goes out of sync and cause cracks and pops
+        int ch = getchar_timeout_us(0);
+        if (ch == 'r' || ch == 'R') {
+            printf("This won't do anything, but it will hold the loop");
+            loop_stabler();
+        }
+        
         for (int i = 0; i < SAMPLES; i++) {
             pio_sm_put_blocking(pio, sm, buffer[i]);
         }
+        
+        // // Optional: Print status every 1000 loops
+        // loop_count++;
+        // if (loop_count % 1000 == 0) {
+        //     printf("Audio loop %u - System running normally\n", loop_count);
+        // }
     }
 }
