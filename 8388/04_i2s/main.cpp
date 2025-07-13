@@ -73,6 +73,11 @@ void init_pio_i2s() {
     sm_config_set_out_pins(&c, I2S_DATA_PIN, 1);
     // Enable autopull after 32 bits (16 bits left + 16 bits right) for 16-bit LSB format
     sm_config_set_out_shift(&c, false, true, 32);
+
+    //pin in config
+    sm_config_set_in_pins(&c, I2S_DATA_IN_PIN);
+    // Enable autopull after 32 bits (16 bits left + 16 bits right)
+    sm_config_set_in_shift(&c, false, true, 32);
     
     // No side-set pins needed - we're following external clocks
     // No in pins needed for this output-only example
@@ -81,6 +86,7 @@ void init_pio_i2s() {
     pio_gpio_init(pio, I2S_BCK_PIN);    // PIO needs to read BCK for wait instructions
     pio_gpio_init(pio, I2S_WS_PIN);     // PIO needs to read WS for wait instructions  
     pio_gpio_init(pio, I2S_DATA_PIN);   // PIO needs to output data
+    pio_gpio_init(pio, I2S_DATA_IN_PIN); // PIO needs to read data input (if needed)
     
     // Set BCK and WS pins as inputs (they come from the codec)
     pio_sm_set_consecutive_pindirs(pio, sm, I2S_BCK_PIN, 1, false);  // BCK input
@@ -88,6 +94,9 @@ void init_pio_i2s() {
     
     // Set data pin as output
     pio_sm_set_consecutive_pindirs(pio, sm, I2S_DATA_PIN, 1, true);  // DATA output
+
+    // Set data input pin as input 
+    pio_sm_set_consecutive_pindirs(pio, sm, I2S_DATA_IN_PIN, 1, false); // DATA input
 
     //clock setup - no divider needed since we follow external clocks
     // The PIO will run at full speed and wait for external clock edges
@@ -156,10 +165,10 @@ void setup_8388() {
     es8388_write(4, 0b11000000); // R4: enable DACs: 0011 1100
 
     // Power up ES8388 codec
-    es8388_write(0, 0b00010110); // R0: set to defaults: 0000 0110
+    es8388_write(0, 0b00000110); // R0: set to defaults: 0000 0110
     es8388_write(1, 0b01010000); // R1: ebable analog power: 0101 0000
     es8388_write(2, 0b00000000); // R2: enable chip power: 0000 0000
-    es8388_write(3, 0b00001000); // R3: enable ADCs: 0000 1100
+    es8388_write(3, 0b00000000); // R3: enable ADCs: 0000 1100
     
     es8388_write(5, 0b00000000); // R5: no low power mode: 0000 0000
     es8388_write(6, 0b00000000); // R6: no low power mode: 0000
@@ -180,6 +189,7 @@ void setup_8388() {
     es8388_write(19, 0b10110000);
     es8388_write(20, 0b00110011);
     es8388_write(21, 0b00000110);
+    es8388_write(22, 0b00000000);
 
     // DAC and output settings
     es8388_write(23, 0b00011010); // R23: 16bit with LSB
@@ -252,13 +262,8 @@ int main()
         }
         
         for (int i = 0; i < SAMPLES; i++) {
-            pio_sm_put_blocking(pio, sm, buffer[i]);
+            pio_sm_put_blocking(pio, sm, read_sample);
+            read_sample = pio_sm_get_blocking(pio, sm);
         }
-        
-        // // Optional: Print status every 1000 loops
-        // loop_count++;
-        // if (loop_count % 1000 == 0) {
-        //     printf("Audio loop %u - System running normally\n", loop_count);
-        // }
     }
 }

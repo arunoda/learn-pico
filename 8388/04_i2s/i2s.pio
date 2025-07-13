@@ -11,6 +11,7 @@
 left_loop:
     wait 0 gpio 4   ; Wait for BCK (pin 4) to go low (falling edge)
     out pins, 1     ; Output one bit on falling edge
+    in pins, 1      ; Read one bit from DATA pin
     wait 1 gpio 4   ; Wait for BCK (pin 4) to go high (rising edge)
     jmp x--, left_loop ; Decrement and loop for next bit
     
@@ -22,6 +23,7 @@ left_loop:
 right_loop:
     wait 0 gpio 4   ; Wait for BCK (pin 4) to go low (falling edge)
     out pins, 1     ; Output one bit on falling edge
+    in pins, 1      ; Read one bit from DATA pin
     wait 1 gpio 4   ; Wait for BCK (pin 4) to go high (rising edge)
     jmp x--, right_loop ; Decrement and loop for next bit
 .wrap
