@@ -11,16 +11,16 @@
 #define PI 3.14159265358979323846
 
 #define I2S_MCLK_PIN 3
-#define I2S_BCK_PIN 4
-#define I2S_WS_PIN 5
+#define I2S_BCK_PIN 4 // This is pin is hardcoded in the PIO program too.
+#define I2S_WS_PIN 5 // This is pin is hardcoded in the PIO program too.
 #define I2S_DATA_PIN 6
 #define I2S_DATA_IN_PIN 7
 
 // ——— I2C CONFIG —————————————————————————————————
-#define PIN_I2C_SDA 0
-#define PIN_I2C_SCL 1
+#define PIN_I2C_SDA 0 // This pin should be something I2C0 SDA is mapped
+#define PIN_I2C_SCL 1 // This pin should be something I2C0 SCL is mapped
 #define I2C_BAUD    400000      // 400 kHz fast-mode
-static const uint8_t ES8388_ADDR = 0x10;  // AD0/CE tied low
+static const uint8_t ES8388_ADDR = 0x10;  // CE tie low in the 8388
 
 #define SAMPLE_RATE 44100
 
@@ -157,19 +157,16 @@ void setup_8388() {
     gpio_pull_up(PIN_I2C_SCL);
     sleep_ms(10);                      // give codec time to power up
     
-    // DAC Mute
-    es8388_write(26, 0b11000000); // R26: DACL volume, we need to set it to 0000 0000 of 0db
-    es8388_write(27, 0b11000000); // R27: DACR volume, we need to set it to 0000 0000 of 0db
-
-    // Disable DAC
-    es8388_write(4, 0b11000000); // R4: enable DACs: 0011 1100
+    // Set the output volume to -96db
+    es8388_write(46, 0b00000000); // R46: LOUT1 volume: need to change to 00011110 for 0db
+    es8388_write(47, 0b00000000); // R47: ROUT1 volume: need to change to 00011110 for 0db
 
     // Power up ES8388 codec
     es8388_write(0, 0b00000110); // R0: set to defaults: 0000 0110
     es8388_write(1, 0b01010000); // R1: ebable analog power: 0101 0000
     es8388_write(2, 0b00000000); // R2: enable chip power: 0000 0000
     es8388_write(3, 0b00000000); // R3: enable ADCs: 0000 1100
-    
+    es8388_write(4, 0b00111100); // R4: enable DACs: 0011 1100
     es8388_write(5, 0b00000000); // R5: no low power mode: 0000 0000
     es8388_write(6, 0b00000000); // R6: no low power mode: 0000
     es8388_write(7, 0b01111100); // R7: anaog voltage mgt (default): 0111 1100
@@ -185,7 +182,7 @@ void setup_8388() {
     es8388_write(15, 0b00100000);
     es8388_write(16, 0b00000000); // R16: ADCL volume, we need to set it to 0000 0000 of 0db
     es8388_write(17, 0b00000000); // R17: DACR volume, we need to set it to 0000 0000 of 0db
-    es8388_write(18, 0b00111000);
+    es8388_write(18, 0b00111000); 
     es8388_write(19, 0b10110000);
     es8388_write(20, 0b00110011);
     es8388_write(21, 0b00000110);
@@ -194,6 +191,8 @@ void setup_8388() {
     // DAC and output settings
     es8388_write(23, 0b00011010); // R23: 16bit with LSB
     es8388_write(24, 0b00000010); // R24: May not need since we use slave mode: but set to 256 MCLK/Sample Rate
+    es8388_write(26, 0b00000000); // R26: DACL volume, we need to set it to 0000 0000 of 0db
+    es8388_write(27, 0b00000000); // R27: DACR volume, we need to set it to 0000 0000 of 0db
     es8388_write(28, 0b00000000); // R28: some phase inversion and few defaults. set to defaults: 0000 0000
     es8388_write(29, 0b00000000); // 
     es8388_write(38, 0b00000000); // R38: LIN select: 0000 0000 (LIN1 -> LEFT, RIN1 -> RIGHT)
@@ -201,20 +200,14 @@ void setup_8388() {
     es8388_write(42, 0b10010000); // R42: need to enable RIN to Mixer and 0db volume 0101 0000
     es8388_write(43, 0b11000000);
     es8388_write(45, 0b00000000);
-    es8388_write(46, 0b00011110); // R46: LOUT1 volume: need to change to 00011110 for 0db
-    es8388_write(47, 0b00011110); // R47: ROUT1 volume: need to change to 00011110 for 0db
     es8388_write(48, 0b00000000); // R48: LOUT2 volume: moved to 0000 0000 for -45db
     es8388_write(49, 0b00000000); // R49: ROUT2 volume: moved to 0000 0000 for -45db
 
+    sleep_ms(500);
 
-    // enable DACs
-    es8388_write(4, 0b00111100); // R4: enable DACs: 0011 1100
-
-    sleep_ms(100);
-
-    // DAC UnMute
-    es8388_write(26, 0b00000000); // R26: DACL volume, we need to set it to 0000 0000 of 0db
-    es8388_write(27, 0b00000000); // R27: DACR volume, we need to set it to 0000 0000 of 0db
+    // Set the output volume to 0db
+    es8388_write(46, 0b00011110); // R46: LOUT1 volume: need to change to 00011110 for 0db
+    es8388_write(47, 0b00011110); // R47: ROUT1 volume: need to change to 00011110 for 0db
 
 }
 
@@ -228,7 +221,7 @@ int main()
     init_pwm_mclk();      // Use PWM for MCLK to codec
 
     // Generate sine wave samples for stereo output
-    const int SAMPLES = SAMPLE_RATE / 110; // One period of 440Hz tone (A4 note)
+    const int SAMPLES = SAMPLE_RATE / 110; // One period of 110Hz tone (A4 note)
     int16_t sine_wave[SAMPLES * 2]; // *2 for stereo (left and right channels)
     
     // Generate one complete sine wave cycle
