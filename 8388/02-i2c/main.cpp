@@ -3,23 +3,32 @@
 #include "hardware/i2c.h"
 
 // ——— CONFIG —————————————————————————————————
-#define PIN_I2C_SDA 0
-#define PIN_I2C_SCL 1
+#define PIN_I2C_SDA 2
+#define PIN_I2C_SCL 3
 #define I2C_BAUD    400000      // 400 kHz fast-mode
 static const uint8_t ES8388_ADDR = 0x10;  // AD0/CE tied low
 
 // ——— HELPER: read one register (with repeated-start) —————
 static inline void es8388_write(uint8_t reg, uint8_t val) {
     uint8_t buf[2] = {reg, val};
-    i2c_write_blocking(i2c0, 0x10, buf, 2, false);
+    i2c_write_blocking(i2c1, 0x10, buf, 2, false);
 }
 
 static bool es8388_read(uint8_t reg, uint8_t &out) {
     // write register index, no stop
-    if (i2c_write_blocking(i2c0, ES8388_ADDR, &reg, 1, /*no_stop=*/true) < 0)
+    if (i2c_write_blocking(i2c1, ES8388_ADDR, &reg, 1, /*no_stop=*/true) < 0)
         return false;
     // repeated-start, read one byte
-    return i2c_read_blocking(i2c0, ES8388_ADDR, &out, 1, /*no_stop=*/false) >= 0;
+    return i2c_read_blocking(i2c1, ES8388_ADDR, &out, 1, /*no_stop=*/false) >= 0;
+}
+
+// Helper: print a byte in binary (MSB first)
+static inline void print_byte_binary(const char *label, uint8_t v) {
+    printf("%s: 0b", label);
+    for (int i = 7; i >= 0; --i) {
+        putchar((v & (1u << i)) ? '1' : '0');
+    }
+    putchar('\n');
 }
 
 int main() {
@@ -27,7 +36,7 @@ int main() {
     sleep_ms(2000);                     // let USB-CDC enumerate
 
     // ——— I²C SETUP ————————————————————————————————
-    i2c_init(i2c0, I2C_BAUD);
+    i2c_init(i2c1, I2C_BAUD);
     gpio_set_function(PIN_I2C_SDA, GPIO_FUNC_I2C);
     gpio_set_function(PIN_I2C_SCL, GPIO_FUNC_I2C);
     gpio_pull_up(PIN_I2C_SDA);
@@ -35,10 +44,10 @@ int main() {
     sleep_ms(10);                      // give codec time to power up
 
     // ——— BUS SCAN —————————————————————————————————
-    printf("Scanning I2C0 for devices...\n");
+    printf("Scanning I2C1 for devices...\n");
     bool found_any = false;
     for (uint8_t addr = 0x03; addr < 0x78; ++addr) {
-        if (i2c_write_blocking(i2c0, addr, nullptr, 0, false) >= 0) {
+        if (i2c_write_blocking(i2c1, addr, nullptr, 0, false) >= 0) {
             printf("  ↳ ACK @ 0x%02X\n", addr);
             found_any = true;
         }
@@ -53,6 +62,7 @@ int main() {
     es8388_write(0x02, 0x00);
 
     // ——— READ LOOP ———————————————————————————————
+    int a = 0;
     while (true) {
         uint8_t v0, v4, v8, v24;
         bool ok0  = es8388_read(0x00, v0);
@@ -61,8 +71,11 @@ int main() {
         bool ok24 = es8388_read(0x18, v24);
 
         if (ok0 && ok4 && ok8 && ok24) {
-            printf("ES8388  R0=0x%02X  R4=0x%02X  R8=0x%02X  R24=0x%02X\n",
-                   v0, v4, v8, v24);
+            // Print each register value in binary on its own line
+            print_byte_binary("R0", v0);
+            print_byte_binary("R4", v4);
+            print_byte_binary("R8", v8);
+            print_byte_binary("R24", v24);
         } else {
             printf("** I2C read error:");
             if (!ok0)  printf(" R0");
@@ -73,5 +86,6 @@ int main() {
         }
 
         sleep_ms(1000);
+        printf("ES8388 read loop: %d...\n", a++ % 1000);
     }
 }
