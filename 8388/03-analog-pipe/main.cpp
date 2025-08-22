@@ -62,7 +62,7 @@ int main() {
     es8388_write(42, 0b01010000); // R42: need to enable RIN to Mixer and 0db volume 0101 0000
     es8388_write(45, 0b00000000);
     es8388_write(46, 0b00011110); // R46: LOUT1 volume: need to change to 00011110 for 0db
-    es8388_write(47, 0b00000000); // R47: ROUT1 volume: moved to 0000 0000 for -45db
+    es8388_write(47, 0b00011110); // R47: ROUT1 volume: need to change to 00011110 for 0db
     es8388_write(48, 0b00000000); // R48: LOUT2 volume: moved to 0000 0000 for -45db
     es8388_write(49, 0b00000000); // R49: ROUT2 volume: moved to 0000 0000 for -45db
 
