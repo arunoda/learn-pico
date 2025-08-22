@@ -10,15 +10,15 @@
 
 #define PI 3.14159265358979323846
 
-#define I2S_MCLK_PIN 3
-#define I2S_BCK_PIN 4 // This is pin is hardcoded in the PIO program too.
-#define I2S_WS_PIN 5 // This is pin is hardcoded in the PIO program too.
-#define I2S_DATA_PIN 6
-#define I2S_DATA_IN_PIN 7
+#define I2S_MCLK_PIN 6
+#define I2S_BCK_PIN 7 // This is pin is hardcoded in the PIO program too.
+#define I2S_WS_PIN 9 // This is pin is hardcoded in the PIO program too.
+#define I2S_DATA_PIN 8
+#define I2S_DATA_IN_PIN 10
 
 // ——— I2C CONFIG —————————————————————————————————
-#define PIN_I2C_SDA 0 // This pin should be something I2C0 SDA is mapped
-#define PIN_I2C_SCL 1 // This pin should be something I2C0 SCL is mapped
+#define PIN_I2C_SDA 2 // This pin should be something I2C1 SDA is mapped
+#define PIN_I2C_SCL 3 // This pin should be something I2C1 SCL is mapped
 #define I2C_BAUD    400000      // 400 kHz fast-mode
 static const uint8_t ES8388_ADDR = 0x10;  // CE tie low in the 8388
 
@@ -33,15 +33,15 @@ uint offset;
 // ——— HELPER: read one register (with repeated-start) —————
 static inline void es8388_write(uint8_t reg, uint8_t val) {
     uint8_t buf[2] = {reg, val};
-    i2c_write_blocking(i2c0, ES8388_ADDR, buf, 2, false);
+    i2c_write_blocking(i2c1, ES8388_ADDR, buf, 2, false);
 }
 
 static bool es8388_read(uint8_t reg, uint8_t &out) {
     // write register index, no stop
-    if (i2c_write_blocking(i2c0, ES8388_ADDR, &reg, 1, /*no_stop=*/true) < 0)
+    if (i2c_write_blocking(i2c1, ES8388_ADDR, &reg, 1, /*no_stop=*/true) < 0)
         return false;
     // repeated-start, read one byte
-    return i2c_read_blocking(i2c0, ES8388_ADDR, &out, 1, /*no_stop=*/false) >= 0;
+    return i2c_read_blocking(i2c1, ES8388_ADDR, &out, 1, /*no_stop=*/false) >= 0;
 }
 
 // This is a weird function which won't run ever.
@@ -150,7 +150,7 @@ void init_pwm_mclk() {
 
 void setup_8388() {
     // ——— I²C SETUP ————————————————————————————————
-    i2c_init(i2c0, I2C_BAUD);
+    i2c_init(i2c1, I2C_BAUD);
     gpio_set_function(PIN_I2C_SDA, GPIO_FUNC_I2C);
     gpio_set_function(PIN_I2C_SCL, GPIO_FUNC_I2C);
     gpio_pull_up(PIN_I2C_SDA);
