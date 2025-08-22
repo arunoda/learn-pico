@@ -3,23 +3,23 @@
 #include "hardware/i2c.h"
 
 // ——— CONFIG —————————————————————————————————
-#define PIN_I2C_SDA 0
-#define PIN_I2C_SCL 1
+#define PIN_I2C_SDA 2
+#define PIN_I2C_SCL 3
 #define I2C_BAUD    400000      // 400 kHz fast-mode
 static const uint8_t ES8388_ADDR = 0x10;  // AD0/CE tied low
 
 // ——— HELPER: read one register (with repeated-start) —————
 static inline void es8388_write(uint8_t reg, uint8_t val) {
     uint8_t buf[2] = {reg, val};
-    i2c_write_blocking(i2c0, ES8388_ADDR, buf, 2, false);
+    i2c_write_blocking(i2c1, ES8388_ADDR, buf, 2, false);
 }
 
 static bool es8388_read(uint8_t reg, uint8_t &out) {
     // write register index, no stop
-    if (i2c_write_blocking(i2c0, ES8388_ADDR, &reg, 1, /*no_stop=*/true) < 0)
+    if (i2c_write_blocking(i2c1, ES8388_ADDR, &reg, 1, /*no_stop=*/true) < 0)
         return false;
     // repeated-start, read one byte
-    return i2c_read_blocking(i2c0, ES8388_ADDR, &out, 1, /*no_stop=*/false) >= 0;
+    return i2c_read_blocking(i2c1, ES8388_ADDR, &out, 1, /*no_stop=*/false) >= 0;
 }
 
 int main() {
@@ -27,7 +27,7 @@ int main() {
     sleep_ms(2000);                     // let USB-CDC enumerate
 
     // ——— I²C SETUP ————————————————————————————————
-    i2c_init(i2c0, I2C_BAUD);
+    i2c_init(i2c1, I2C_BAUD);
     gpio_set_function(PIN_I2C_SDA, GPIO_FUNC_I2C);
     gpio_set_function(PIN_I2C_SCL, GPIO_FUNC_I2C);
     gpio_pull_up(PIN_I2C_SDA);
@@ -87,5 +87,6 @@ int main() {
         // printf("----------------------\n");
 
         sleep_ms(3000);
+        printf("ES8388 codec initialized and running.\n");
     }
 }
